@@ -1,20 +1,31 @@
+from chatbot.database import save_chat, get_recent_chat
+from chatbot.memory import merge_preferences
+from chatbot.prompts import SYSTEM_PROMPT
+from chatbot.gemini_api import ask_gemini
 import json
+#from database import save_chat
+#from memory import merge_preferences
 
-from prompts import SYSTEM_PROMPT
-from gemini_api import ask_gemini
+
+USER_ID = 1
 
 
 def extract_preferences(user_input):
+    conversation = build_conversation(USER_ID, user_input)
 
     prompt = f"""
-{SYSTEM_PROMPT}
+        {SYSTEM_PROMPT}
 
-User Message:
+    Conversation:
 
-{user_input}
-"""
+        {conversation}
+""" 
 
     response = ask_gemini(prompt)
+
+    if response is None:
+
+        return None
 
     response = response.replace("```json", "")
     response = response.replace("```", "")
@@ -22,13 +33,13 @@ User Message:
 
     try:
 
-        preferences = json.loads(response)
-
-        return preferences
+        return json.loads(response)
 
     except Exception:
 
         return {
+            "intent": None,
+            "movie_name": None,
             "mood": None,
             "genre": None,
             "language": None,
@@ -39,19 +50,60 @@ User Message:
 
 def chatbot():
 
-    print("🎬 Netflix AI Chatbot")
-    print("Tell me what kind of movie you want.\n")
+    print("\n🎬 Netflix AI Chatbot")
+    print("Type 'exit' to quit.\n")
 
-    user_input = input("You : ")
+    while True:
 
-    preferences = extract_preferences(user_input)
+        user_input = input("You : ")
 
-    print("\nExtracted Preferences\n")
+        if user_input.lower() == "exit":
+            break
 
-    print(json.dumps(preferences, indent=4))
+        # Save user message
+        save_chat(USER_ID, "user", user_input)
 
-    return preferences
+        extracted = extract_preferences(user_input)
 
+        if extracted is None:
+
+            print("\nBot : Gemini API unavailable.\n")
+            continue
+
+        # Merge with previous preferences
+        preferences = merge_preferences(USER_ID, extracted)
+
+        # Save assistant response
+        save_chat(
+            USER_ID,
+            "assistant",
+            json.dumps(preferences)
+        )
+
+        print("\nCurrent Preferences\n")
+
+        print(json.dumps(preferences, indent=4))
+
+        print("\n-----------------------------------\n")
+
+
+def build_conversation(user_id, user_message):
+
+    history = get_recent_chat(user_id)
+
+    conversation = ""
+
+    for role, message in history:
+
+        if role == "user":
+            conversation += f"User: {message}\n"
+
+        else:
+            conversation += f"Assistant: {message}\n"
+
+    conversation += f"User: {user_message}\n"
+
+    return conversation
 
 if __name__ == "__main__":
 
