@@ -3,7 +3,7 @@ import pandas as pd
 from sklearn.metrics.pairwise import cosine_similarity
 import pickle
 import numpy as np
-from tmdb_api import TMDBClient
+from recommendation.tmdb_api import TMDBClient
 
 
 class RecommendationEngine:
@@ -34,15 +34,30 @@ class RecommendationEngine:
             ]
 
         # Language Filter
+        language_map = {
+        "english": "en",
+    "tamil": "ta",
+    "hindi": "hi",
+    "telugu": "te",
+    "malayalam": "ml",
+    "kannada": "kn"
+}
+
         if preferences.get("language"):
+
+            lang = preferences["language"].lower()
+
+            lang = language_map.get(lang, lang)
+
             filtered_df = filtered_df[
-                filtered_df["original_language"].str.lower()
-                == preferences["language"].lower()
+                filtered_df["original_language"].str.lower() == lang
             ]
 
-        # Runtime Filter
-        if preferences.get("duration"):
-            filtered_df = filtered_df[filtered_df["runtime"] <= preferences["duration"]]
+# Runtime Filter
+        if preferences.get("watch_time"):
+            filtered_df = filtered_df[
+            filtered_df["runtime"] <= preferences["watch_time"]
+    ]
 
         # Rating Filter
         if preferences.get("min_rating"):
@@ -84,6 +99,10 @@ class RecommendationEngine:
             # Get TMDB information (poster/trailer/cast/director etc.)
             tmdb_details = self.tmdb.get_movie_details(movie["title"])
 
+            print("\n====================================")
+            print("Movie:", movie["title"])
+            print("TMDB:", tmdb_details)
+            print("====================================")
             recommendations.append({
                 # Dataset details
                 "title": movie["title"],
