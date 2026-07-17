@@ -43,6 +43,33 @@ Return this JSON format exactly:
 
 Intent Rules
 
+If the user is only greeting you, with no movie-related content
+(e.g. "hi", "hello", "hey", "good morning", "how are you")
+
+Return
+
+"intent": "greeting"
+
+------------------------------------------------
+
+If the user wants to end the conversation
+(e.g. "exit", "quit", "bye", "goodbye", "see you", "thanks bye")
+
+Return
+
+"intent": "farewell"
+
+------------------------------------------------
+
+If the message has no movie-related content and does not fit
+"greeting" or "farewell" either (e.g. "thanks", "ok", "lol")
+
+Return
+
+"intent": "other"
+
+------------------------------------------------
+
 If the user is describing movie preferences
 
 Examples

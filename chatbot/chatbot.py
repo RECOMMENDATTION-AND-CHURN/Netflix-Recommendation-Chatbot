@@ -1,10 +1,8 @@
-from chatbot.database import save_chat, get_recent_chat
+from database.chat_store import save_chat, get_recent_chat
 from chatbot.memory import merge_preferences
 from chatbot.prompts import SYSTEM_PROMPT
 from chatbot.gemini_api import ask_gemini
 import json
-#from database import save_chat
-#from memory import merge_preferences
 
 
 USER_ID = 1

@@ -1,4 +1,4 @@
-from chatbot.database import load_preferences, save_preferences
+from database.chat_store import load_preferences, save_preferences
 
 def merge_preferences(user_id, new_preferences):
     """

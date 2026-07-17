@@ -110,16 +110,16 @@ class RecommendationEngine:
                 "language": movie["original_language"],
                 "rating": movie["vote_average"],
                 "runtime": movie["runtime"],
-                "overview": movie["overview"],
+                "overview": movie["overview"] if movie["overview"] else "No overview available.",
                 "similarity_score": float(candidate_scores[idx]),
 
-                # TMDB details
-                "poster": tmdb_details["poster"] if tmdb_details else "",
-                "trailer": tmdb_details["trailer"] if tmdb_details else "",
-                "director": tmdb_details["director"] if tmdb_details else "",
-                "cast": tmdb_details["cast"] if tmdb_details else [],
-                "release_date": tmdb_details["release_date"] if tmdb_details else "",
-                "imdb_id": tmdb_details["imdb_id"] if tmdb_details else "",
+                # TMDB details — fall back to "Unknown" instead of blank (bug fix)
+                "poster": tmdb_details["poster"] if tmdb_details and tmdb_details.get("poster") else "",
+                "trailer": tmdb_details["trailer"] if tmdb_details and tmdb_details.get("trailer") else "",
+                "director": tmdb_details["director"] if tmdb_details and tmdb_details.get("director") else "Unknown",
+                "cast": tmdb_details["cast"] if tmdb_details and tmdb_details.get("cast") else [],
+                "release_date": tmdb_details["release_date"] if tmdb_details and tmdb_details.get("release_date") else "Unknown",
+                "imdb_id": tmdb_details["imdb_id"] if tmdb_details and tmdb_details.get("imdb_id") else "Unknown",
             })
 
         return recommendations
