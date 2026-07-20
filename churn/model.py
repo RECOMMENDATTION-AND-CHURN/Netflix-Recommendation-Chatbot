@@ -43,12 +43,55 @@ BASE_FEATURE_COLUMNS = [
     "avg_rating_given",
 ]
 
-FEATURE_COLUMNS = BASE_FEATURE_COLUMNS + GENRE_COLUMNS
+# Engineered ratio features — raw counters alone can't distinguish "clicked
+# 2 of 2 recommendations" from "clicked 2 of 200"; these normalize activity
+# against opportunity, which tends to carry more predictive signal for
+# churn than raw counts. Computed identically at train time (from the CSV's
+# raw columns) and at inference time (from a live user_activity dict) by
+# the same _engineer_features() function below, so train/serve never skew.
+ENGINEERED_FEATURE_COLUMNS = [
+    "favorite_rate", "click_through_rate", "rating_engagement_rate", "engagement_score",
+]
+
+FEATURE_COLUMNS = BASE_FEATURE_COLUMNS + ENGINEERED_FEATURE_COLUMNS + GENRE_COLUMNS
+
+
+def _safe_ratio(numerator, denominator) -> float:
+    """0 instead of NaN/inf when there's no denominator activity yet
+    (new user with 0 recommendation_requests, etc.)."""
+    numerator = numerator or 0
+    denominator = denominator or 0
+    return float(numerator) / denominator if denominator > 0 else 0.0
+
+
+def _engineer_features(df: pd.DataFrame) -> pd.DataFrame:
+    """Adds the ENGINEERED_FEATURE_COLUMNS to a copy of df. df must already
+    have the BASE_FEATURE_COLUMNS present (raw counters)."""
+    df = df.copy()
+    df["favorite_rate"] = [
+        _safe_ratio(f, r) for f, r in zip(df["favorites_added"], df["recommendation_requests"])
+    ]
+    df["click_through_rate"] = [
+        _safe_ratio(c, r) for c, r in zip(df["movies_clicked"], df["recommendation_requests"])
+    ]
+    df["rating_engagement_rate"] = [
+        _safe_ratio(g, r) for g, r in zip(df["ratings_given"], df["recommendation_requests"])
+    ]
+    # A single rough "how engaged is this user overall" signal — session
+    # length and search activity scaled down so one giant session doesn't
+    # dominate the sum the way raw minutes/searches would.
+    df["engagement_score"] = (
+        df["session_duration"].fillna(0) / 30.0
+        + df["search_count"].fillna(0) / 10.0
+        + df["favorite_rate"] + df["click_through_rate"] + df["rating_engagement_rate"]
+    )
+    return df
 
 
 def train() -> LGBMClassifier:
     """Trains and persists the churn model. Prints evaluation metrics."""
     df = pd.read_csv(DATA_PATH)
+    df = _engineer_features(df)
 
     X = df[FEATURE_COLUMNS]
     y = df["churn"]
@@ -98,7 +141,9 @@ def build_feature_row(activity: Dict, preferred_genre: Optional[str] = None) -> 
         # the model wasn't trained on those categories
 
     row.update(genre_row)
-    return pd.DataFrame([row], columns=FEATURE_COLUMNS)
+    single_row_df = pd.DataFrame([row], columns=BASE_FEATURE_COLUMNS + GENRE_COLUMNS)
+    single_row_df = _engineer_features(single_row_df)
+    return single_row_df[FEATURE_COLUMNS]
 
 
 def predict_churn_probability(activity: Dict, preferred_genre: Optional[str] = None) -> float:

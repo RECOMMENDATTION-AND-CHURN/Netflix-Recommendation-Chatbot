@@ -36,7 +36,7 @@ class TMDBClient:
         self.api_key = api_key.strip()
         self.base_url = "https://api.themoviedb.org/3"
         self.image_base = "https://image.tmdb.org/t/p/w500"
-        self.timeout = 10
+        self.timeout = 20
 
         # v4 read-access tokens are long and contain two dots (JWT format).
         # v3 api keys are short (usually 32 chars, no dots).
@@ -82,6 +82,94 @@ class TMDBClient:
         except requests.exceptions.RequestException as e:
             print(f"[TMDBClient] WARNING: could not validate key at startup: {e}")
 
+    def _details_by_id(self, movie_id) -> Optional[Dict[str, Any]]:
+        """Shared by get_movie_details() and get_movie_details_by_id():
+        given a TMDB movie id, fetches details/videos/credits and shapes
+        them into the same dict both public methods return."""
+        details = self.session.get(
+            f"{self.base_url}/movie/{movie_id}",
+            params=self._params(),
+            timeout=self.timeout,
+        ).json()
+
+        videos = self.session.get(
+            f"{self.base_url}/movie/{movie_id}/videos",
+            params=self._params(),
+            timeout=self.timeout,
+        ).json()
+
+        trailer = ""
+        for video in videos.get("results", []):
+            if video.get("site") == "YouTube":
+                if video.get("type") == "Trailer" or not trailer:
+                    trailer = f"https://www.youtube.com/watch?v={video['key']}"
+                    if video.get("type") == "Trailer":
+                        break
+
+        credits = self.session.get(
+            f"{self.base_url}/movie/{movie_id}/credits",
+            params=self._params(),
+            timeout=self.timeout,
+        ).json()
+
+        poster = ""
+        if details.get("poster_path"):
+            poster = self.image_base + details["poster_path"]
+
+        director = None
+        for crew in credits.get("crew", []):
+            if crew.get("job") == "Director":
+                director = crew.get("name")
+                break
+
+        return {
+            "title": details.get("title"),
+            "rating": details.get("vote_average"),
+            "release_date": details.get("release_date"),
+            "runtime": details.get("runtime"),
+            "genres": [g["name"] for g in details.get("genres", [])],
+            "overview": details.get("overview"),
+            "poster": poster,
+            "trailer": trailer,
+            "cast": [actor["name"] for actor in credits.get("cast", [])[:5]],
+            "director": director,
+            "imdb_id": details.get("imdb_id"),
+        }
+
+    @functools.lru_cache(maxsize=200)
+    def get_movie_details_by_id(self, movie_id: int) -> Optional[Dict[str, Any]]:
+        """Fetch comprehensive movie details from TMDB by TMDB movie id
+        directly (no title search, so no ambiguity for common titles like
+        "It" or "Us"). This is the method recommendation.py's recommend()
+        calls first, preferring the dataset's own TMDB id — it was being
+        called but never defined, which is why recommendations crashed
+        with 'Something went wrong' as soon as the chatbot tried to
+        actually suggest a movie. Returns None on failure (bad id, 401,
+        network error), same contract as get_movie_details()."""
+        try:
+            response = self.session.get(
+                f"{self.base_url}/movie/{movie_id}",
+                params=self._params(),
+                timeout=self.timeout,
+            )
+            if response.status_code == 401:
+                print(f"[TMDBClient] 401 Unauthorized while fetching id={movie_id}. "
+                      f"Your API key/token is invalid or expired.")
+                return None
+            if response.status_code == 404:
+                print(f"[TMDBClient] No TMDB movie found for id={movie_id}.")
+                return None
+            response.raise_for_status()
+
+            return self._details_by_id(movie_id)
+
+        except requests.exceptions.RequestException as e:
+            print(f"[TMDBClient] API Error for id={movie_id}: {e}")
+            return None
+        except KeyError as e:
+            print(f"[TMDBClient] Data parsing error for id={movie_id}: {e}")
+            return None
+
     @functools.lru_cache(maxsize=200)
     def get_movie_details(self, movie_name: str) -> Optional[Dict[str, Any]]:
         """Fetch comprehensive movie details from TMDB. Returns None on failure
@@ -107,55 +195,7 @@ class TMDBClient:
             movie = data["results"][0]
             movie_id = movie["id"]
 
-            details = self.session.get(
-                f"{self.base_url}/movie/{movie_id}",
-                params=self._params(),
-                timeout=self.timeout,
-            ).json()
-
-            videos = self.session.get(
-                f"{self.base_url}/movie/{movie_id}/videos",
-                params=self._params(),
-                timeout=self.timeout,
-            ).json()
-
-            trailer = ""
-            for video in videos.get("results", []):
-                if video.get("site") == "YouTube":
-                    if video.get("type") == "Trailer" or not trailer:
-                        trailer = f"https://www.youtube.com/watch?v={video['key']}"
-                        if video.get("type") == "Trailer":
-                            break
-
-            credits = self.session.get(
-                f"{self.base_url}/movie/{movie_id}/credits",
-                params=self._params(),
-                timeout=self.timeout,
-            ).json()
-
-            poster = ""
-            if details.get("poster_path"):
-                poster = self.image_base + details["poster_path"]
-
-            director = None
-            for crew in credits.get("crew", []):
-                if crew.get("job") == "Director":
-                    director = crew.get("name")
-                    break
-
-            return {
-                "title": details.get("title"),
-                "rating": details.get("vote_average"),
-                "release_date": details.get("release_date"),
-                "runtime": details.get("runtime"),
-                "genres": [g["name"] for g in details.get("genres", [])],
-                "overview": details.get("overview"),
-                "poster": poster,
-                "trailer": trailer,
-                "cast": [actor["name"] for actor in credits.get("cast", [])[:5]],
-                "director": director,
-                "imdb_id": details.get("imdb_id"),
-            }
+            return self._details_by_id(movie_id)
 
         except requests.exceptions.RequestException as e:
             print(f"[TMDBClient] API Error for '{movie_name}': {e}")

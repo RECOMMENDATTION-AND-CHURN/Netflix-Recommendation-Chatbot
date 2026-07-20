@@ -85,3 +85,29 @@ def get_user_by_id(user_id: int) -> Optional[Dict]:
             "SELECT user_id, username FROM users WHERE user_id=?", (user_id,)
         ).fetchone()
     return dict(row) if row else None
+
+
+def update_password(user_id: int, current_password: str, new_password: str) -> bool:
+    """Additive: verifies the current password, then rotates to a fresh
+    salt + hash for new_password. Returns False (no changes made) if the
+    current password is wrong or the user doesn't exist. Used by the new
+    web frontend's Settings page — signup()/login() are untouched."""
+    with get_connection() as conn:
+        row = conn.execute(
+            "SELECT password_hash, salt FROM users WHERE user_id=?", (user_id,)
+        ).fetchone()
+
+        if row is None:
+            return False
+
+        salt = bytes.fromhex(row["salt"])
+        if _hash_password(current_password, salt) != row["password_hash"]:
+            return False
+
+        new_salt = os.urandom(16)
+        new_hash = _hash_password(new_password, new_salt)
+        conn.execute(
+            "UPDATE users SET password_hash=?, salt=? WHERE user_id=?",
+            (new_hash, new_salt.hex(), user_id),
+        )
+        return True

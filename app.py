@@ -11,6 +11,7 @@ in dashboard.py (provider-only), per spec.
 """
 
 import streamlit as st
+import streamlit.components.v1 as components
 import os
 import re
 import time
@@ -21,21 +22,26 @@ from chatbot.chatbot import extract_preferences
 from chatbot.memory import merge_preferences
 from chatbot.conversation import is_ready_to_recommend, next_question, describe_preference_change
 from database.auth_store import signup, login, get_user_by_id
-from database.chat_store import save_chat, get_chat_history, load_preferences
+from database.chat_store import (
+    save_chat, get_chat_history, get_chat_history_with_timestamps,
+    load_preferences, delete_last_assistant_message, delete_last_user_message,
+    delete_trailing_assistant_messages, clear_chat_history,
+)
 from database.activity_store import (
     touch_login, touch_logout, increment_activity, add_rating as track_rating_activity,
     set_preferred_genre, set_session_duration, get_user_activity,
 )
 from database.favorites_store import add_favorite, is_favorited, get_favorites
 from database.ratings_store import add_or_update_rating, get_user_rating_for_movie
+from database.interaction_store import log_click
 from database.feedback_store import add_feedback
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 BASE_DIR = os.path.dirname(__file__)
-ASSISTANT_AVATAR = "🎬"
-USER_AVATAR = "🧑"
+ASSISTANT_AVATAR = None
+USER_AVATAR = None
 
 GREETING_PATTERN = re.compile(
     r"^\s*(hi|hii+|hey+|hello+|yo|sup|good\s?(morning|afternoon|evening))\s*[!.?]*\s*$",
@@ -58,6 +64,19 @@ css_path = os.path.join(BASE_DIR, "assets", "style.css")
 if os.path.exists(css_path):
     with open(css_path) as f:
         st.markdown(f"<style>{f.read()}</style>", unsafe_allow_html=True)
+
+# Ensure mobile browsers render at device width (not desktop-zoomed-out)
+st.markdown(
+    '<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">',
+    unsafe_allow_html=True,
+)
+
+# Small progressive-enhancement JS layer (auto-scroll, tap-to-expand cards).
+# Purely cosmetic — the app is fully functional without it.
+js_path = os.path.join(BASE_DIR, "assets", "script.js")
+if os.path.exists(js_path):
+    with open(js_path) as f:
+        components.html(f"<script>{f.read()}</script>", height=0, width=0)
 
 service = MovieRecommendationService(
     dataset_path=os.path.join(BASE_DIR, "data", "tmdb_Preprocessed_dataset.csv"),
@@ -118,24 +137,27 @@ def build_reasons(movie: dict, preferences: dict) -> list:
 def render_movie_card(movie: dict, idx: int, user_id: int, preferences: dict) -> None:
     genre_display = format_genres(movie.get("genre"))
     poster_html = (
-        f'<img src="{movie["poster"]}" class="nf-poster">'
-        if movie.get("poster") else '<div class="nf-poster nf-poster-placeholder">🎬 No Poster</div>'
+        f'<img src="{movie["poster"]}" class="nf-poster" loading="lazy" alt="{movie["title"]} poster">'
+        if movie.get("poster") else '<div class="nf-poster-placeholder">🎬 No Poster</div>'
     )
     director = movie.get("director") or "Unknown"
     reasons_html = "".join(f"<li>✔ {r}</li>" for r in build_reasons(movie, preferences))
+    # Small visual touch: each card fades in slightly later than the one
+    # before it (capped so a long list doesn't feel sluggish to appear).
+    stagger_delay = min(idx * 0.06, 0.3)
 
     st.markdown(
         f"""
-        <div class="nf-movie-card">
-            {poster_html}
+        <div class="nf-movie-card" style="animation-delay:{stagger_delay}s">
+            <div class="nf-poster-wrap">{poster_html}</div>
             <div class="nf-movie-title">{movie['title']}</div>
             <div class="nf-movie-meta">{star_rating(movie['rating'])} &nbsp;
                 <span class="nf-badge">⭐ {movie['rating']}</span>
-                <span class="nf-badge">🕒 {movie['runtime']} min</span>
+                <span class="nf-badge nf-badge-outline">🕒 {movie['runtime']} min</span>
             </div>
             <div class="nf-movie-meta">{genre_display}</div>
-            <div class="nf-movie-meta">🎬 Director: {director}</div>
-            <div style="color:#CFCFCF; font-size:0.92rem; margin:8px 0;">{movie['overview']}</div>
+            <div class="nf-movie-meta">🎬 {director}</div>
+            <div class="nf-overview">{movie['overview']}</div>
             <div class="nf-reasons"><b>Why recommended</b><ul>{reasons_html}</ul></div>
         </div>
         """,
@@ -153,6 +175,7 @@ def render_movie_card(movie: dict, idx: int, user_id: int, preferences: dict) ->
         if st.button(label, key=f"fav_{idx}_{movie['title']}", disabled=already_fav):
             add_favorite(user_id, movie["title"], movie.get("genre", ""))
             increment_activity(user_id, "favorites_added")
+            log_click(user_id, movie["title"], "favorited")
             st.toast(f"Added {movie['title']} to favorites!")
             st.rerun()
 
@@ -160,6 +183,7 @@ def render_movie_card(movie: dict, idx: int, user_id: int, preferences: dict) ->
         if movie.get("trailer"):
             if st.button("▶ Watch Trailer", key=f"trailer_{idx}_{movie['title']}"):
                 increment_activity(user_id, "trailer_clicked")
+                log_click(user_id, movie["title"], "trailer")
                 st.markdown(f"[Open trailer ↗]({movie['trailer']})")
         else:
             st.caption("Trailer: Unknown")
@@ -175,12 +199,17 @@ def render_movie_card(movie: dict, idx: int, user_id: int, preferences: dict) ->
             add_or_update_rating(user_id, movie["title"], int(rating_choice))
             track_rating_activity(user_id, int(rating_choice))
             increment_activity(user_id, "movies_clicked")
+            log_click(user_id, movie["title"], "rated")
 
     st.write("")
 
 
 def send_and_store(user_id: int, role: str, content: str) -> None:
-    st.session_state.messages.append({"role": role, "content": content})
+    st.session_state.messages.append({
+        "role": role,
+        "content": content,
+        "timestamp": time.strftime("%Y-%m-%d %H:%M:%S"),
+    })
     save_chat(user_id, role, content)
 
 
@@ -199,54 +228,58 @@ if st.session_state.auth_user is None:
             st.session_state.auth_user = user
 
 if st.session_state.auth_user is None:
-    st.markdown(
-        """
-        <div class="nf-hero">
-            <h1>🎬 Netflix AI</h1>
-            <p>Sign in to get personalized movie recommendations.</p>
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
+    # Center a real bordered container (not a bare <div>, so Streamlit's
+    # own widgets/tabs/forms actually render *inside* it as DOM children).
+    left, mid, right = st.columns([1, 2.2, 1])
+    with mid:
+        with st.container(border=True, key="nf_auth_card"):
+            st.markdown(
+                """
+                <div class="nf-auth-logo">🎬</div>
+                <h2>Netflix AI</h2>
+                <div class="nf-sub">Sign in to get personalized movie recommendations.</div>
+                """,
+                unsafe_allow_html=True,
+            )
 
-    tab_login, tab_signup = st.tabs(["Log In", "Sign Up"])
+            tab_login, tab_signup = st.tabs(["Log In", "Sign Up"])
 
-    with tab_login:
-        with st.form("login_form"):
-            u = st.text_input("Username")
-            p = st.text_input("Password", type="password")
-            remember = st.checkbox("Remember me", value=True)
-            submitted = st.form_submit_button("Log In")
+            with tab_login:
+                with st.form("login_form"):
+                    u = st.text_input("Username")
+                    p = st.text_input("Password", type="password")
+                    remember = st.checkbox("Remember me", value=True)
+                    submitted = st.form_submit_button("Log In")
 
-        if submitted:
-            user = login(u, p)
-            if user:
-                st.session_state.auth_user = user
-                if remember:
-                    st.query_params["uid"] = str(user["user_id"])
-                touch_login(user["user_id"])
-                st.rerun()
-            else:
-                st.error("Invalid username or password.")
+                if submitted:
+                    user = login(u, p)
+                    if user:
+                        st.session_state.auth_user = user
+                        if remember:
+                            st.query_params["uid"] = str(user["user_id"])
+                        touch_login(user["user_id"])
+                        st.rerun()
+                    else:
+                        st.error("Invalid username or password.")
 
-    with tab_signup:
-        with st.form("signup_form"):
-            new_u = st.text_input("Choose a username")
-            new_p = st.text_input("Choose a password", type="password")
-            new_p2 = st.text_input("Confirm password", type="password")
-            signup_submitted = st.form_submit_button("Sign Up")
+            with tab_signup:
+                with st.form("signup_form"):
+                    new_u = st.text_input("Choose a username")
+                    new_p = st.text_input("Choose a password", type="password")
+                    new_p2 = st.text_input("Confirm password", type="password")
+                    signup_submitted = st.form_submit_button("Sign Up")
 
-        if signup_submitted:
-            if new_p != new_p2:
-                st.error("Passwords don't match.")
-            elif len(new_p) < 6:
-                st.error("Password should be at least 6 characters.")
-            else:
-                uid = signup(new_u, new_p)
-                if uid:
-                    st.success("Account created! Please log in.")
-                else:
-                    st.error("That username is already taken.")
+                if signup_submitted:
+                    if new_p != new_p2:
+                        st.error("Passwords don't match.")
+                    elif len(new_p) < 6:
+                        st.error("Password should be at least 6 characters.")
+                    else:
+                        uid = signup(new_u, new_p)
+                        if uid:
+                            st.success("Account created! Please log in.")
+                        else:
+                            st.error("That username is already taken.")
 
     st.stop()
 
@@ -277,7 +310,8 @@ set_session_duration(USER_ID, round(elapsed_minutes, 2))
 # ---- Persistent chat: restore from SQLite, formatted correctly ----
 if "messages" not in st.session_state:
     st.session_state.messages = [
-        {"role": role, "content": message} for role, message in get_chat_history(USER_ID)
+        {"role": role, "content": message, "timestamp": ts}
+        for role, message, ts in get_chat_history_with_timestamps(USER_ID)
     ]
 
 if "prev_preferences_snapshot" not in st.session_state:
@@ -291,7 +325,15 @@ if "last_movies" not in st.session_state:
 # Sidebar — user-facing only, no churn data by design
 # =====================================================
 with st.sidebar:
-    st.header(f"👤 {USERNAME.title()}")
+    st.markdown(
+        f"""
+        <div class="nf-user-chip">
+            <div class="nf-avatar-circle">{USERNAME[:1].upper()}</div>
+            <div>{USERNAME.title()}</div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
 
     if st.button("🚪 Log Out"):
         touch_logout(USER_ID)
@@ -299,6 +341,15 @@ with st.sidebar:
         st.session_state.pop("messages", None)
         if "uid" in st.query_params:
             del st.query_params["uid"]
+        st.rerun()
+
+    if st.button("🗑️ Clear Chat"):
+        clear_chat_history(USER_ID)
+        st.session_state.messages = []
+        st.session_state.last_movies = None
+        st.session_state.last_preferences = {}
+        st.session_state.pop("_editing_message_index", None)
+        st.toast("Chat cleared.")
         st.rerun()
 
     st.divider()
@@ -321,20 +372,89 @@ with st.sidebar:
 # =====================================================
 # Render existing conversation
 # =====================================================
-for msg in st.session_state.messages:
+last_user_idx = None
+for _i, _m in enumerate(st.session_state.messages):
+    if _m["role"] == "user":
+        last_user_idx = _i
+
+editing_idx = st.session_state.get("_editing_message_index")
+
+for i, msg in enumerate(st.session_state.messages):
     avatar = ASSISTANT_AVATAR if msg["role"] == "assistant" else USER_AVATAR
+
+    # The one message currently being edited renders as an editable form
+    # instead of a static bubble.
+    if msg["role"] == "user" and i == editing_idx:
+        with st.chat_message("user", avatar=USER_AVATAR):
+            with st.form(key=f"nf_edit_form_{i}"):
+                edited_text = st.text_area("Edit your message", value=msg["content"], label_visibility="collapsed")
+                save_col, cancel_col = st.columns(2)
+                save_clicked = save_col.form_submit_button("💾 Save & Resend")
+                cancel_clicked = cancel_col.form_submit_button("✖ Cancel")
+
+            if cancel_clicked:
+                st.session_state.pop("_editing_message_index", None)
+                st.rerun()
+
+            if save_clicked and edited_text.strip():
+                # Drop this user message + every assistant reply that followed
+                # it (both in the UI and in the DB), then treat the edited
+                # text exactly like a fresh prompt the user just typed.
+                del st.session_state.messages[i:]
+                delete_trailing_assistant_messages(USER_ID)
+                delete_last_user_message(USER_ID)
+                st.session_state.pop("_editing_message_index", None)
+                st.session_state["_edited_prompt"] = edited_text.strip()
+                st.rerun()
+        continue
+
     with st.chat_message(msg["role"], avatar=avatar):
         st.markdown(msg["content"])
+        ts = msg.get("timestamp")
+        if ts:
+            # Show just the time (HH:MM) — the date is implicit for a live chat.
+            st.caption(ts[-8:-3] if len(ts) >= 8 else ts)
+
+        if msg["role"] == "user" and i == last_user_idx and editing_idx is None:
+            if st.button("✏️ Edit", key=f"nf_edit_{i}"):
+                st.session_state["_editing_message_index"] = i
+                st.rerun()
+
+    is_last_message = (i == len(st.session_state.messages) - 1)
+    if is_last_message and msg["role"] == "assistant":
+        last_user_msg = next(
+            (m["content"] for m in reversed(st.session_state.messages[:i]) if m["role"] == "user"),
+            None,
+        )
+        if last_user_msg and st.button("🔄 Regenerate", key="nf_regenerate"):
+            # Drop the stale reply (UI + the single most-recent DB row only —
+            # never touches the user's message or any other user's rows)
+            # then re-run the exact same pipeline on the same prompt.
+            st.session_state.messages.pop(i)
+            delete_last_assistant_message(USER_ID)
+            st.session_state["_regenerate_prompt"] = last_user_msg
+            st.rerun()
 
 # =====================================================
 # Handle new input
 # =====================================================
 prompt = st.chat_input("Type your message...")
+regenerate_prompt = st.session_state.pop("_regenerate_prompt", None)
+edited_prompt = st.session_state.pop("_edited_prompt", None)
+is_regenerate = prompt is None and regenerate_prompt is not None
+if is_regenerate:
+    prompt = regenerate_prompt
+elif prompt is None and edited_prompt is not None:
+    # An edited message behaves exactly like a brand-new prompt the user
+    # just typed — it gets its own fresh chat bubble + DB row below,
+    # rather than reusing the (already-deleted) old one.
+    prompt = edited_prompt
 
 if prompt:
-    with st.chat_message("user", avatar=USER_AVATAR):
-        st.markdown(prompt)
-    send_and_store(USER_ID, "user", prompt)
+    if not is_regenerate:
+        with st.chat_message("user", avatar=USER_AVATAR):
+            st.markdown(prompt)
+        send_and_store(USER_ID, "user", prompt)
 
     local_intent = classify_locally(prompt)
 
@@ -356,7 +476,7 @@ if prompt:
     increment_activity(USER_ID, "search_count")
 
     with st.spinner("🎬 Thinking..."):
-        extracted = extract_preferences(prompt)
+        extracted = extract_preferences(prompt, USER_ID)
 
     if extracted is None:
         reply = "❌ Unable to connect to Gemini API. Please try again in a moment."
@@ -395,7 +515,7 @@ if prompt:
             send_and_store(USER_ID, "assistant", reply)
 
         else:
-            movies = service.get_recommendations_with_details(preferences, top_n=5)
+            movies = service.get_recommendations_with_details(preferences, top_n=5, user_id=USER_ID)
             increment_activity(USER_ID, "recommendation_requests")
 
             if change_note:
@@ -424,6 +544,13 @@ if prompt:
 # Favorite / Trailer / Rate doesn't make the cards vanish.
 # =====================================================
 if st.session_state.get("last_movies"):
-    st.markdown("### Here's what I found for you 🎥")
-    for i, movie in enumerate(st.session_state.last_movies):
-        render_movie_card(movie, i, USER_ID, st.session_state.get("last_preferences", {}))
+    st.markdown('<div class="nf-section-title">🎥 Here\'s what I found for you</div>', unsafe_allow_html=True)
+    movies = st.session_state.last_movies
+    prefs = st.session_state.get("last_preferences", {})
+    # Two-column responsive grid — Streamlit's own columns stack to a single
+    # column automatically on narrow/mobile viewports, so this stays a real
+    # grid on laptop and a clean single column on phones without CSS hacks.
+    grid_cols = st.columns(2, gap="medium")
+    for i, movie in enumerate(movies):
+        with grid_cols[i % 2]:
+            render_movie_card(movie, i, USER_ID, prefs)

@@ -8,8 +8,14 @@ import json
 USER_ID = 1
 
 
-def extract_preferences(user_input):
-    conversation = build_conversation(USER_ID, user_input)
+def extract_preferences(user_input, user_id=None):
+    """user_id is optional and defaults to the module-level USER_ID (used
+    by the single-user CLI chatbot() below) so existing single-argument
+    callers keep working exactly as before. app.py (the multi-user web
+    UI) passes the real logged-in user's id so conversation context is
+    built from THEIR chat history, not always user 1's."""
+    effective_user_id = USER_ID if user_id is None else user_id
+    conversation = build_conversation(effective_user_id, user_input)
 
     prompt = f"""
         {SYSTEM_PROMPT}
