@@ -1,40 +1,143 @@
-/* ===================================================
-   Netflix-style theme (assets/style.css)
-   Red + Black palette, rounded cards, hover effects.
-   =================================================== */
+/* ===================================================================
+   Netflix AI Chatbot — theme.css
+   Modern, responsive (mobile + desktop) redesign.
+   Red/black cinematic palette, glassmorphism, motion, accessible.
+   =================================================================== */
 
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
 
 :root {
     --nf-red: #E50914;
     --nf-red-dark: #B0060F;
-    --nf-black: #141414;
-    --nf-black-soft: #1F1F1F;
-    --nf-card: #232323;
+    --nf-red-glow: rgba(229, 9, 20, 0.35);
+    --nf-black: #0B0B0D;
+    --nf-black-soft: #17171A;
+    --nf-card: #1C1C20;
+    --nf-card-hover: #232328;
+    --nf-border: rgba(255, 255, 255, 0.08);
     --nf-text: #F5F5F1;
-    --nf-text-muted: #B3B3B3;
+    --nf-text-muted: #A7A7AD;
+    --nf-radius-lg: 20px;
+    --nf-radius-md: 14px;
+    --nf-radius-sm: 9px;
+    --nf-shadow: 0 8px 30px rgba(0, 0, 0, 0.45);
 }
 
-.stApp {
-    background: linear-gradient(180deg, #0B0B0B 0%, var(--nf-black) 100%);
+html, body, .stApp {
+    background:
+        radial-gradient(1200px 600px at 15% -10%, rgba(229,9,20,0.16), transparent 60%),
+        radial-gradient(900px 500px at 100% 0%, rgba(229,9,20,0.08), transparent 55%),
+        linear-gradient(180deg, #08080A 0%, var(--nf-black) 100%);
     color: var(--nf-text);
-    font-family: 'Inter', -apple-system, sans-serif;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
 }
 
-/* ---- Hero ---- */
+/* Tighten default Streamlit padding so our layout controls spacing */
+.block-container {
+    padding-top: 1.6rem !important;
+    padding-bottom: 6rem !important;
+    max-width: 900px;
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #3a3a3f; border-radius: 10px; }
+::-webkit-scrollbar-thumb:hover { background: var(--nf-red-dark); }
+
+@keyframes fadeInUp {
+    from { opacity: 0; transform: translateY(14px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes pulseGlow {
+    0%, 100% { box-shadow: 0 0 0 rgba(229,9,20,0); }
+    50% { box-shadow: 0 0 24px rgba(229,9,20,0.35); }
+}
+@keyframes skeletonShine {
+    0% { background-position: 100% 50%; }
+    100% { background-position: 0 50%; }
+}
+
+/* ================= Typography ================= */
+html, body, .stApp {
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+}
+h1, h2, h3, .nf-hero h1, .nf-section-title {
+    letter-spacing: -0.4px;
+}
+p, .nf-overview, .nf-movie-meta {
+    line-height: 1.55;
+}
+
+/* ================= Glassmorphism ================= */
+.nf-hero,
+.nf-movie-card,
+div[data-testid="stChatMessage"],
+.nf-user-chip,
+div[class*="st-key-nf_panel_"] {
+    background-color: rgba(28, 28, 32, 0.55) !important;
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+}
+.nf-movie-card:hover { background-color: rgba(35, 35, 40, 0.7) !important; }
+
+/* Skeleton loading placeholder - shown while a recommendation request is
+   in flight, as a richer alternative to the plain spinner text. */
+.nf-skeleton-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 18px;
+    margin-top: 18px;
+}
+.nf-skeleton-card {
+    border-radius: var(--nf-radius-lg);
+    padding: 18px;
+    border: 1px solid var(--nf-border);
+    background: var(--nf-card);
+    animation: fadeInUp 0.3s ease both;
+}
+.nf-skeleton-block {
+    border-radius: var(--nf-radius-md);
+    background: linear-gradient(90deg, rgba(255,255,255,0.05) 25%, rgba(255,255,255,0.1) 37%, rgba(255,255,255,0.05) 63%);
+    background-size: 400% 100%;
+    animation: skeletonShine 1.3s ease infinite;
+}
+.nf-skeleton-poster { width: 100%; aspect-ratio: 2/3; margin-bottom: 12px; }
+.nf-skeleton-line { height: 12px; margin-bottom: 8px; width: 100%; }
+.nf-skeleton-line.short { width: 60%; }
+
+/* Streamlit's own spinner, restyled to match the theme */
+div[data-testid="stSpinner"] { color: var(--nf-red) !important; }
+div[data-testid="stSpinner"] > div { border-top-color: var(--nf-red) !important; }
+
+/* ================= Hero / header ================= */
 .nf-hero {
-    padding: 30px 26px;
-    border-radius: 16px;
+    padding: 34px 30px;
+    border-radius: var(--nf-radius-lg);
     margin-bottom: 22px;
-    background: linear-gradient(120deg, rgba(229,9,20,0.20), rgba(20,20,20,0.4));
+    background: linear-gradient(120deg, rgba(229,9,20,0.22), rgba(20,20,20,0.35));
     border: 1px solid rgba(229,9,20,0.35);
+    animation: fadeInUp 0.5s ease both;
+    position: relative;
+    overflow: hidden;
+}
+.nf-hero::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(400px 200px at 90% 0%, rgba(229,9,20,0.25), transparent 70%);
+    pointer-events: none;
 }
 .nf-hero h1 {
-    font-size: 2.1rem;
-    font-weight: 800;
+    font-size: clamp(1.5rem, 4vw, 2.2rem);
+    font-weight: 900;
     color: var(--nf-red);
     margin: 0 0 6px 0;
     letter-spacing: -0.5px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
 }
 .nf-hero p {
     color: var(--nf-text-muted);
@@ -42,103 +145,339 @@
     margin: 0;
 }
 
-/* ---- Sidebar ---- */
-section[data-testid="stSidebar"] {
-    background: var(--nf-black-soft);
-    border-right: 1px solid rgba(255,255,255,0.06);
+/* ================= Auth screen ================= */
+/* Streamlit stamps a `st-key-nf_auth_card` class on the real bordered
+   container in app.py, so this actually wraps the tabs/forms (a bare
+   unclosed <div> from st.markdown would NOT — each Streamlit element
+   renders as its own DOM fragment). */
+div[class*="st-key-nf_auth_card"] {
+    max-width: 440px;
+    margin: 4vh auto;
+    background: linear-gradient(180deg, rgba(28,28,32,0.92), rgba(15,15,17,0.92)) !important;
+    border-radius: var(--nf-radius-lg) !important;
+    padding: 12px 10px 4px;
+    box-shadow: var(--nf-shadow);
+    backdrop-filter: blur(10px);
+    animation: fadeInUp 0.55s ease both;
+}
+.nf-auth-logo {
+    text-align: center;
+    margin-bottom: 6px;
+    font-size: 2.4rem;
+}
+div[class*="st-key-nf_auth_card"] h2 {
+    text-align: center;
+    color: var(--nf-red);
+    font-weight: 800;
+    font-size: 1.6rem;
+    margin: 0 0 4px;
+}
+.nf-sub {
+    text-align: center;
+    color: var(--nf-text-muted);
+    font-size: 0.92rem;
+    margin-bottom: 18px;
 }
 
-/* ---- Chat bubbles ---- */
+/* Tabs (Log In / Sign Up) */
+.stTabs [data-baseweb="tab-list"] {
+    gap: 4px;
+    background: var(--nf-black-soft);
+    padding: 4px;
+    border-radius: 999px;
+    border: 1px solid var(--nf-border);
+}
+.stTabs [data-baseweb="tab"] {
+    border-radius: 999px;
+    color: var(--nf-text-muted);
+    font-weight: 600;
+    padding: 8px 0;
+}
+.stTabs [aria-selected="true"] {
+    background: var(--nf-red);
+    color: #fff !important;
+}
+.stTabs [data-baseweb="tab-highlight"] { display: none; }
+.stTabs [data-baseweb="tab-border"] { display: none; }
+
+/* Inputs */
+.stTextInput input, .stTextArea textarea, .stSelectbox div[data-baseweb="select"] > div {
+    background: var(--nf-black-soft) !important;
+    color: var(--nf-text) !important;
+    border: 1px solid var(--nf-border) !important;
+    border-radius: var(--nf-radius-sm) !important;
+}
+.stTextInput input:focus, .stTextArea textarea:focus {
+    border-color: var(--nf-red) !important;
+    box-shadow: 0 0 0 1px var(--nf-red) !important;
+}
+.stCheckbox label { color: var(--nf-text-muted) !important; }
+
+/* ================= Sidebar ================= */
+section[data-testid="stSidebar"] {
+    background: linear-gradient(180deg, var(--nf-black-soft), #101012);
+    border-right: 1px solid var(--nf-border);
+}
+section[data-testid="stSidebar"] h2, section[data-testid="stSidebar"] h3 {
+    color: var(--nf-text);
+    font-weight: 700;
+}
+.nf-user-chip {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 12px;
+    background: rgba(229,9,20,0.12);
+    border: 1px solid rgba(229,9,20,0.3);
+    border-radius: var(--nf-radius-md);
+    margin-bottom: 10px;
+}
+.nf-user-chip .nf-avatar-circle {
+    width: 36px; height: 36px;
+    border-radius: 50%;
+    background: var(--nf-red);
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 800; color: #fff;
+    flex-shrink: 0;
+}
+
+/* ================= Chat messages ================= */
 div[data-testid="stChatMessage"] {
     background: var(--nf-black-soft);
-    border-radius: 16px;
-    padding: 8px 6px;
-    margin-bottom: 8px;
-    border: 1px solid rgba(255,255,255,0.06);
+    border-radius: var(--nf-radius-md);
+    padding: 10px 8px;
+    margin-bottom: 10px;
+    border: 1px solid var(--nf-border);
+    animation: fadeInUp 0.35s ease both;
+    transition: border-color 0.15s ease;
+}
+div[data-testid="stChatMessage"]:hover {
+    border-color: rgba(229,9,20,0.25);
+}
+div[data-testid="stChatMessageAvatarUser"] {
+    background: linear-gradient(135deg, #3a3a40, #232328) !important;
+}
+div[data-testid="stChatMessageAvatarAssistant"] {
+    background: linear-gradient(135deg, var(--nf-red), var(--nf-red-dark)) !important;
 }
 
-/* ---- Movie cards ---- */
+/* Sticky chat input, pill-shaped */
+div[data-testid="stChatInput"] {
+    background: var(--nf-black-soft);
+    border: 1px solid var(--nf-border);
+    border-radius: 999px;
+    padding: 2px 6px;
+}
+div[data-testid="stChatInput"] textarea {
+    color: var(--nf-text) !important;
+}
+div[data-testid="stBottomBlockContainer"] {
+    background: linear-gradient(0deg, var(--nf-black) 55%, transparent);
+}
+
+/* ================= Movie card grid ================= */
+.nf-section-title {
+    font-size: 1.2rem;
+    font-weight: 800;
+    margin: 22px 0 16px;
+    color: var(--nf-text);
+    position: relative;
+    padding-left: 14px;
+}
+.nf-section-title::before {
+    content: "";
+    position: absolute;
+    left: 0; top: 3px; bottom: 3px;
+    width: 4px;
+    border-radius: 999px;
+    background: linear-gradient(180deg, var(--nf-red), var(--nf-red-dark));
+}
 .nf-movie-card {
     background: var(--nf-card);
-    border-radius: 18px;
+    border-radius: var(--nf-radius-lg);
     padding: 20px;
-    margin-bottom: 20px;
-    border: 1px solid rgba(255,255,255,0.08);
-    box-shadow: 0 4px 18px rgba(0,0,0,0.35);
-    transition: transform 0.18s ease, box-shadow 0.18s ease;
+    border: 1px solid var(--nf-border);
+    box-shadow: var(--nf-shadow);
+    transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease, background-color 0.2s ease;
+    /* animation-delay is set inline per-card (style="animation-delay: ...")
+       by render_movie_card() in app.py, so cards visibly cascade in one
+       after another instead of all popping in at once. */
+    animation: fadeInUp 0.45s ease both;
+    display: flex;
+    flex-direction: column;
 }
 .nf-movie-card:hover {
-    transform: translateY(-3px);
-    box-shadow: 0 10px 28px rgba(229,9,20,0.25);
-    border-color: rgba(229,9,20,0.4);
+    transform: translateY(-4px);
+    box-shadow: 0 14px 34px rgba(229,9,20,0.28);
+    border-color: rgba(229,9,20,0.45);
+    background: var(--nf-card-hover);
+}
+.nf-poster-wrap {
+    position: relative;
+    border-radius: var(--nf-radius-md);
+    overflow: hidden;
+    margin-bottom: 12px;
+    aspect-ratio: 2 / 3;
+    background: #202024;
 }
 .nf-poster {
     width: 100%;
-    max-height: 420px;
+    height: 100%;
     object-fit: cover;
-    border-radius: 14px;
-    margin-bottom: 12px;
-    box-shadow: 0 6px 20px rgba(0,0,0,0.5);
+    display: block;
+    transition: transform 0.35s ease;
 }
+.nf-movie-card:hover .nf-poster { transform: scale(1.05); }
 .nf-poster-placeholder {
     display: flex;
     align-items: center;
     justify-content: center;
-    height: 200px;
-    background: #2a2a2a;
+    height: 100%;
     color: var(--nf-text-muted);
-    font-size: 1.1rem;
+    font-size: 1.05rem;
 }
 .nf-movie-title {
-    font-size: 1.35rem;
-    font-weight: 700;
+    font-size: 1.2rem;
+    font-weight: 800;
     color: var(--nf-text);
     margin-bottom: 6px;
+    line-height: 1.25;
 }
 .nf-movie-meta {
     color: var(--nf-text-muted);
-    font-size: 0.9rem;
+    font-size: 0.88rem;
     margin-bottom: 6px;
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 6px;
 }
 .nf-badge {
     display: inline-block;
     background: var(--nf-red);
     color: white;
-    font-size: 0.75rem;
-    font-weight: 600;
+    font-size: 0.72rem;
+    font-weight: 700;
     padding: 3px 11px;
     border-radius: 999px;
-    margin-right: 6px;
+}
+.nf-badge.nf-badge-outline {
+    background: transparent;
+    border: 1px solid var(--nf-border);
+    color: var(--nf-text-muted);
+}
+.nf-overview {
+    color: #CFCFCF;
+    font-size: 0.9rem;
+    line-height: 1.45;
+    margin: 6px 0 10px;
+    flex-grow: 1;
 }
 .nf-reasons {
     background: rgba(229,9,20,0.08);
     border-left: 3px solid var(--nf-red);
     border-radius: 8px;
     padding: 10px 14px;
-    margin-top: 10px;
-    font-size: 0.88rem;
+    margin-top: 6px;
+    font-size: 0.86rem;
 }
+.nf-reasons b { color: var(--nf-text); }
 .nf-reasons ul {
     margin: 6px 0 0 0;
     padding-left: 18px;
     color: var(--nf-text-muted);
 }
 
-/* ---- Buttons ---- */
+/* ================= Buttons ================= */
 .stButton > button {
     background-color: var(--nf-red);
     color: white;
     border: none;
-    border-radius: 8px;
-    font-weight: 600;
-    transition: background-color 0.15s ease-in-out, transform 0.1s ease;
+    border-radius: var(--nf-radius-sm);
+    font-weight: 700;
+    padding: 0.5rem 1rem;
+    transition: background-color 0.15s ease, transform 0.1s ease, box-shadow 0.15s ease;
 }
 .stButton > button:hover {
     background-color: var(--nf-red-dark);
     color: white;
-    transform: scale(1.02);
+    transform: translateY(-1px);
+    box-shadow: 0 6px 16px rgba(229,9,20,0.35);
 }
+.stButton > button:active { transform: translateY(0); }
 .stButton > button:disabled {
-    background-color: #4a4a4a;
-    color: #999;
+    background-color: #3a3a3f;
+    color: #888;
+    box-shadow: none;
+}
+/* Primary form submit buttons full-width + bolder */
+.stFormSubmitButton > button {
+    width: 100%;
+    background: linear-gradient(120deg, var(--nf-red), var(--nf-red-dark));
+    animation: none;
+}
+.stFormSubmitButton > button:hover { animation: pulseGlow 1.4s ease infinite; }
+
+/* Native st.metric widgets (dashboard KPI row) styled as cards */
+div[data-testid="stMetric"] {
+    background: var(--nf-card);
+    border: 1px solid var(--nf-border);
+    border-radius: var(--nf-radius-md);
+    padding: 14px 16px;
+    animation: fadeInUp 0.4s ease both;
+    transition: transform 0.15s ease, border-color 0.15s ease;
+}
+div[data-testid="stMetric"]:hover {
+    transform: translateY(-2px);
+    border-color: rgba(229,9,20,0.35);
+}
+div[data-testid="stMetricLabel"] { color: var(--nf-text-muted) !important; }
+div[data-testid="stMetricValue"] { color: var(--nf-text) !important; font-weight: 800 !important; }
+
+/* Dataframes/tables */
+div[data-testid="stDataFrame"] {
+    border-radius: var(--nf-radius-md);
+    overflow: hidden;
+    border: 1px solid var(--nf-border);
+}
+
+/* Automatic stagger for movie cards within a Streamlit column - each
+   successive card in a column fades in slightly later than the last,
+   so a 2-column grid of 5 results doesn't all pop in simultaneously. */
+div[data-testid="column"] .nf-movie-card:nth-of-type(1) { animation-delay: 0.02s; }
+div[data-testid="column"] .nf-movie-card:nth-of-type(2) { animation-delay: 0.10s; }
+div[data-testid="column"] .nf-movie-card:nth-of-type(3) { animation-delay: 0.18s; }
+
+/* Tabs: subtle hover feedback on the inactive tab before it's selected */
+.stTabs [data-baseweb="tab"]:hover {
+    color: var(--nf-text);
+    background: rgba(255,255,255,0.04);
+}
+
+/* Dataframe header row - make it read as a real header, not body text */
+div[data-testid="stDataFrame"] thead tr th {
+    background: var(--nf-black-soft) !important;
+    color: var(--nf-text) !important;
+    font-weight: 700 !important;
+}
+
+/* ================= Responsive: tablet & mobile ================= */
+@media (max-width: 768px) {
+    .block-container { padding-left: 0.9rem !important; padding-right: 0.9rem !important; }
+    .nf-hero { padding: 22px 18px; border-radius: var(--nf-radius-md); }
+    .nf-hero h1 { font-size: 1.5rem; }
+    .nf-hero p { font-size: 0.9rem; }
+    div[class*="st-key-nf_auth_card"] { padding: 8px 4px 2px; border-radius: var(--nf-radius-md) !important; }
+    .nf-poster-wrap { aspect-ratio: 16 / 9; }
+    div[data-testid="stChatMessage"] { padding: 8px 4px; }
+}
+
+@media (max-width: 480px) {
+    .nf-hero h1 { font-size: 1.3rem; }
+    .nf-movie-title { font-size: 1.05rem; }
+}
+
+/* Respect users who prefer less motion */
+@media (prefers-reduced-motion: reduce) {
+    * { animation-duration: 0.001ms !important; animation-iteration-count: 1 !important; transition-duration: 0.001ms !important; }
 }

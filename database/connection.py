@@ -136,6 +136,41 @@ def create_database() -> None:
         )
         """)
 
+        # ---- Search history (Module 4 — recommendation engine) ----
+        # One row per chat turn where preferences were extracted. Unlike
+        # user_preferences (which only keeps the CURRENT snapshot, one row
+        # per user), this is an append-only log, so the recommendation
+        # engine can weight candidates by what a user has searched for
+        # most *over time*, not just their latest ask.
+        cursor.execute("""
+        CREATE TABLE IF NOT EXISTS search_history (
+            search_id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER,
+            genre TEXT,
+            language TEXT,
+            mood TEXT,
+            searched_at TEXT,
+            FOREIGN KEY (user_id) REFERENCES users(user_id)
+        )
+        """)
+
+        # ---- Movie click/engagement history (Module 4) ----
+        # One row per movie a user interacted with (recommended / clicked
+        # trailer / rated / favorited). Distinct from favorites/ratings
+        # tables: this captures lighter-weight signals (e.g. "recommended
+        # and shown" or "trailer clicked" even without an explicit rating)
+        # for the recommendation engine's history-based scoring.
+        cursor.execute("""
+        CREATE TABLE IF NOT EXISTS movie_clicks (
+            click_id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER,
+            movie_title TEXT,
+            interaction_type TEXT,
+            clicked_at TEXT,
+            FOREIGN KEY (user_id) REFERENCES users(user_id)
+        )
+        """)
+
     logger.info("Database schema verified/created.")
 
 

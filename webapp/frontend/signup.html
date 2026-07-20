@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<title>Sign Up &middot; Netflix</title>
+<link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+  <div class="auth-shell">
+    <div class="auth-card glass">
+      <div class="auth-logo">🎬</div>
+      <h1>Create your account</h1>
+      <div class="auth-sub">Join Netflix to get tailored movie picks.</div>
+
+      <form id="signup-form" novalidate>
+        <div class="field">
+          <label for="username">Choose a username</label>
+          <input id="username" name="username" type="text" autocomplete="username" required minlength="3">
+        </div>
+        <div class="field">
+          <label for="password">Choose a password</label>
+          <input id="password" name="password" type="password" autocomplete="new-password" required minlength="6">
+        </div>
+        <div class="field">
+          <label for="confirm">Confirm password</label>
+          <input id="confirm" name="confirm" type="password" autocomplete="new-password" required minlength="6">
+        </div>
+        <div class="field-error" id="form-error"></div>
+        <button type="submit" class="btn btn-primary btn-block" id="submit-btn">
+          <span id="submit-label">Sign Up</span>
+        </button>
+      </form>
+
+      <div class="auth-switch">Already have an account? <a href="/login.html">Log in</a></div>
+    </div>
+  </div>
+
+  <script src="/js/toast.js"></script>
+  <script src="/js/api.js"></script>
+  <script>
+    (async () => {
+      const me = await Api.get("/api/auth/me");
+      if (me.authenticated) window.location.href = "/chat.html";
+    })();
+
+    const form = document.getElementById("signup-form");
+    const errorEl = document.getElementById("form-error");
+    const submitBtn = document.getElementById("submit-btn");
+    const submitLabel = document.getElementById("submit-label");
+
+    form.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      errorEl.textContent = "";
+
+      const password = document.getElementById("password").value;
+      const confirm = document.getElementById("confirm").value;
+      if (password !== confirm) {
+        errorEl.textContent = "Passwords don't match.";
+        return;
+      }
+
+      submitBtn.disabled = true;
+      submitLabel.innerHTML = '<span class="spinner"></span> Creating account...';
+
+      const res = await Api.post("/api/auth/signup", {
+        username: document.getElementById("username").value,
+        password,
+        confirm,
+      });
+
+      if (res.ok) {
+        showToast("Account created! Please log in.", "success");
+        window.location.href = "/login.html";
+      } else {
+        errorEl.textContent = res.error || "Signup failed.";
+        submitBtn.disabled = false;
+        submitLabel.textContent = "Sign Up";
+      }
+    });
+  </script>
+</body>
+</html>

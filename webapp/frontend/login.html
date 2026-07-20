@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<title>Log In &middot; Netflix</title>
+<link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+  <div class="auth-shell">
+    <div class="auth-card glass">
+      <div class="auth-logo">🎬</div>
+      <h1>Netflix</h1>
+      <div class="auth-sub">Sign in to get personalized movie recommendations.</div>
+
+      <form id="login-form" novalidate>
+        <div class="field">
+          <label for="username">Username</label>
+          <input id="username" name="username" type="text" autocomplete="username" required>
+        </div>
+        <div class="field">
+          <label for="password">Password</label>
+          <input id="password" name="password" type="password" autocomplete="current-password" required>
+        </div>
+        <div class="checkbox-row">
+          <input id="remember" type="checkbox" checked>
+          <label for="remember" style="margin:0;">Remember me</label>
+        </div>
+        <div class="field-error" id="form-error"></div>
+        <button type="submit" class="btn btn-primary btn-block" id="submit-btn">
+          <span id="submit-label">Log In</span>
+        </button>
+      </form>
+
+      <div class="auth-switch">Don't have an account? <a href="/signup.html">Sign up</a></div>
+    </div>
+  </div>
+
+  <script src="/js/toast.js"></script>
+  <script src="/js/api.js"></script>
+  <script>
+    (async () => {
+      const me = await Api.get("/api/auth/me");
+      if (me.authenticated) window.location.href = "/chat.html";
+    })();
+
+    const form = document.getElementById("login-form");
+    const errorEl = document.getElementById("form-error");
+    const submitBtn = document.getElementById("submit-btn");
+    const submitLabel = document.getElementById("submit-label");
+
+    form.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      errorEl.textContent = "";
+      submitBtn.disabled = true;
+      submitLabel.innerHTML = '<span class="spinner"></span> Logging in...';
+
+      const res = await Api.post("/api/auth/login", {
+        username: document.getElementById("username").value,
+        password: document.getElementById("password").value,
+        remember: document.getElementById("remember").checked,
+      });
+
+      if (res.ok) {
+        showToast(`Welcome back, ${res.user.username}!`, "success");
+        window.location.href = "/chat.html";
+      } else {
+        errorEl.textContent = res.error || "Login failed.";
+        submitBtn.disabled = false;
+        submitLabel.textContent = "Log In";
+      }
+    });
+  </script>
+</body>
+</html>

@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<title>Chat &middot; Netflix</title>
+<link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+  <div class="page-loader" id="page-loader">
+    <div class="logo-emoji">🎬</div>
+    <div>Loading Netflix&hellip;</div>
+  </div>
+
+  <div class="app-shell" id="app-shell" style="display:none;">
+    <div id="sidebar-root"></div>
+
+    <main class="main-content">
+      <div class="page-hero">
+        <h1 id="hero-title">🎬 Netflix AI Chatbot</h1>
+        <p id="hero-sub">Tell me your mood, language, or genre.</p>
+      </div>
+
+      <div class="chat-wrap">
+        <div class="chat-toolbar">
+          <div></div>
+          <button class="btn btn-ghost btn-sm" id="clear-chat-btn">🗑️ Clear chat</button>
+        </div>
+
+        <div class="chat-messages" id="chat-messages"></div>
+        <div id="movie-results"></div>
+
+        <div class="chat-input-bar glass">
+          <textarea id="chat-input" rows="1" placeholder="Type your message..."></textarea>
+          <button class="btn btn-primary btn-icon" id="send-btn" aria-label="Send">➤</button>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <script src="/js/toast.js"></script>
+  <script src="/js/api.js"></script>
+  <script src="/js/shell.js"></script>
+  <script src="/js/chat.js"></script>
+</body>
+</html>

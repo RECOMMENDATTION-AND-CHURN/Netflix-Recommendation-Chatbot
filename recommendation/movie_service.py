@@ -19,7 +19,5 @@ class MovieRecommendationService:
     def __init__(self, dataset_path, embedding_path):
         self.engine = RecommendationEngine(dataset_path, embedding_path)
 
-    def get_recommendations_with_details(self, preferences, top_n=5):
-        return self.engine.recommend(preferences, top_n)
-
-
+    def get_recommendations_with_details(self, preferences, top_n=5, user_id=None):
+        return self.engine.recommend(preferences, top_n, user_id=user_id)

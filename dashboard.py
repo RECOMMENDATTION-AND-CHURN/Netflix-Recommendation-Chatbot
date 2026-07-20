@@ -10,6 +10,7 @@ Run with:
     streamlit run dashboard.py
 """
 
+import os
 import streamlit as st
 import pandas as pd
 import numpy as np
@@ -23,8 +24,26 @@ from churn.model import predict_churn_probability, risk_label, _load_bundle, bui
 
 st.set_page_config(page_title="Netflix AI — Provider Dashboard", page_icon="📊", layout="wide")
 
-st.title("📊 Provider Dashboard")
-st.caption("Engagement analytics & churn risk — provider/admin only. Never shown inside the chatbot.")
+# Reuse the same theme as the chatbot (app.py) so both surfaces feel like
+# one product instead of one styled app and one default-Streamlit page.
+BASE_DIR = os.path.dirname(__file__)
+css_path = os.path.join(BASE_DIR, "assets", "style.css")
+if os.path.exists(css_path):
+    with open(css_path) as f:
+        st.markdown(f"<style>{f.read()}</style>", unsafe_allow_html=True)
+# Plotly charts default to a light theme — force dark so they don't clash
+# with the red/black background.
+px.defaults.template = "plotly_dark"
+
+st.markdown(
+    """
+    <div class="nf-hero">
+        <h1>📊 Provider Dashboard</h1>
+        <p>Engagement analytics &amp; churn risk — provider/admin only. Never shown inside the chatbot.</p>
+    </div>
+    """,
+    unsafe_allow_html=True,
+)
 
 activity_rows = get_all_user_activity()
 users = get_all_users()
@@ -77,19 +96,21 @@ if "last_activity" in df.columns:
     dau = int((last_activity.dt.date == now.date()).sum())
     mau = int((last_activity >= now - timedelta(days=30)).sum())
 
-row1 = st.columns(5)
-row1[0].metric("Total Users", total_users)
-row1[1].metric("New Users (7d)", new_users_7d)
-row1[2].metric("Active Users (7d)", active_users)
-row1[3].metric("Daily Active Users", dau)
-row1[4].metric("Monthly Active Users", mau)
+with st.container(border=True, key="nf_panel_kpis_1"):
+    row1 = st.columns(5)
+    row1[0].metric("Total Users", total_users)
+    row1[1].metric("New Users (7d)", new_users_7d)
+    row1[2].metric("Active Users (7d)", active_users)
+    row1[3].metric("Daily Active Users", dau)
+    row1[4].metric("Monthly Active Users", mau)
 
-row2 = st.columns(5)
-row2[0].metric("High-Risk Users", high_risk_users)
-row2[1].metric("Low-Risk Users", low_risk_users)
-row2[2].metric("Avg Satisfaction", f"{avg_satisfaction} / 5")
-row2[3].metric("Avg Rating (platform)", f"{avg_rating_platform} / 5")
-row2[4].metric("Est. Retention Rate", f"{retention_rate}%")
+with st.container(border=True, key="nf_panel_kpis_2"):
+    row2 = st.columns(5)
+    row2[0].metric("High-Risk Users", high_risk_users)
+    row2[1].metric("Low-Risk Users", low_risk_users)
+    row2[2].metric("Avg Satisfaction", f"{avg_satisfaction} / 5")
+    row2[3].metric("Avg Rating (platform)", f"{avg_rating_platform} / 5")
+    row2[4].metric("Est. Retention Rate", f"{retention_rate}%")
 
 st.divider()
 
@@ -98,36 +119,40 @@ st.divider()
 # =====================================================
 col_a, col_b = st.columns(2)
 
-with col_a:
-    st.subheader("Churn Risk Distribution")
-    risk_counts = df["risk_label"].value_counts().reset_index()
-    risk_counts.columns = ["Risk Level", "Users"]
-    fig = px.pie(risk_counts, names="Risk Level", values="Users", hole=0.4,
-                 color="Risk Level",
-                 color_discrete_map={"High Risk": "#e74c3c", "Medium Risk": "#f39c12", "Low Risk": "#2ecc71"})
-    st.plotly_chart(fig, use_container_width=True)
+with st.container(border=True, key="nf_panel_charts_1"):
+    col_a, col_b = st.columns(2)
 
-with col_b:
-    st.subheader("Genre Popularity")
-    if "preferred_genre" in df.columns and df["preferred_genre"].notna().any():
-        genre_counts = df["preferred_genre"].value_counts().reset_index()
-        genre_counts.columns = ["Genre", "Users"]
-        fig2 = px.bar(genre_counts, x="Genre", y="Users")
-        st.plotly_chart(fig2, use_container_width=True)
-    else:
-        st.info("No genre preferences recorded yet.")
+    with col_a:
+        st.subheader("Churn Risk Distribution")
+        risk_counts = df["risk_label"].value_counts().reset_index()
+        risk_counts.columns = ["Risk Level", "Users"]
+        fig = px.pie(risk_counts, names="Risk Level", values="Users", hole=0.4,
+                     color="Risk Level",
+                     color_discrete_map={"High Risk": "#e74c3c", "Medium Risk": "#f39c12", "Low Risk": "#2ecc71"})
+        st.plotly_chart(fig, use_container_width=True)
 
-col_c, col_d = st.columns(2)
+    with col_b:
+        st.subheader("Genre Popularity")
+        if "preferred_genre" in df.columns and df["preferred_genre"].notna().any():
+            genre_counts = df["preferred_genre"].value_counts().reset_index()
+            genre_counts.columns = ["Genre", "Users"]
+            fig2 = px.bar(genre_counts, x="Genre", y="Users")
+            st.plotly_chart(fig2, use_container_width=True)
+        else:
+            st.info("No genre preferences recorded yet.")
 
-with col_c:
-    st.subheader("Session Duration (minutes)")
-    fig3 = px.histogram(df, x="session_duration", nbins=20)
-    st.plotly_chart(fig3, use_container_width=True)
+with st.container(border=True, key="nf_panel_charts_2"):
+    col_c, col_d = st.columns(2)
 
-with col_d:
-    st.subheader("Recommendation Requests per User")
-    fig4 = px.histogram(df, x="recommendation_requests", nbins=20)
-    st.plotly_chart(fig4, use_container_width=True)
+    with col_c:
+        st.subheader("Session Duration (minutes)")
+        fig3 = px.histogram(df, x="session_duration", nbins=20)
+        st.plotly_chart(fig3, use_container_width=True)
+
+    with col_d:
+        st.subheader("Recommendation Requests per User")
+        fig4 = px.histogram(df, x="recommendation_requests", nbins=20)
+        st.plotly_chart(fig4, use_container_width=True)
 
 st.divider()
 
@@ -170,6 +195,74 @@ except ImportError:
     st.info("Install `shap` (see requirements.txt) to see feature-importance explanations.")
 except Exception as e:
     st.warning(f"Could not compute SHAP explanation: {e}")
+
+st.divider()
+
+# =====================================================
+# Per-user SHAP explanation — real-time, on demand
+# =====================================================
+st.subheader("🔎 Explain a single user's churn risk")
+st.caption("Real-time — recomputed from that user's current activity row, not a cached batch result.")
+
+user_ids_available = df["user_id"].tolist() if "user_id" in df.columns else []
+if not user_ids_available:
+    st.info("No users to explain yet.")
+else:
+    selected_uid = st.selectbox("Pick a user_id", sorted(user_ids_available))
+    selected_row = df[df["user_id"] == selected_uid].iloc[0]
+
+    st.metric(
+        f"Churn probability — user {selected_uid}",
+        f"{selected_row['churn_probability']:.1%}",
+        help=selected_row["risk_label"],
+    )
+
+    try:
+        import shap
+
+        bundle = _load_bundle()
+        model = bundle["model"]
+        feature_columns = bundle["feature_columns"]
+
+        X_one = build_feature_row(selected_row.to_dict())[feature_columns]
+
+        explainer = shap.TreeExplainer(model)
+        shap_values_one = explainer.shap_values(X_one)
+        sv_one = (
+            shap_values_one[1][0] if isinstance(shap_values_one, list)
+            else shap_values_one[0]
+        )
+
+        contrib_df = pd.DataFrame({
+            "feature": feature_columns,
+            "value": X_one.iloc[0].values,
+            "shap_contribution": sv_one,
+        })
+        # Sort by absolute impact so the biggest drivers (either direction) surface first.
+        contrib_df["abs_contribution"] = contrib_df["shap_contribution"].abs()
+        contrib_df = contrib_df.sort_values("abs_contribution", ascending=False).head(8)
+
+        fig_one = px.bar(
+            contrib_df.sort_values("shap_contribution"),
+            x="shap_contribution", y="feature", orientation="h",
+            color="shap_contribution",
+            color_continuous_scale=["#2ecc71", "#e74c3c"],
+            title=f"What's pushing user {selected_uid}'s risk up (red) or down (green)",
+        )
+        st.plotly_chart(fig_one, use_container_width=True)
+
+        # Plain-language summary of the top 3 drivers.
+        top3 = contrib_df.head(3)
+        bullet_lines = []
+        for _, r in top3.iterrows():
+            direction = "increases" if r["shap_contribution"] > 0 else "decreases"
+            bullet_lines.append(f"- **{r['feature']}** = {r['value']:.2f} → {direction} churn risk")
+        st.markdown("**Top factors:**\n" + "\n".join(bullet_lines))
+
+    except ImportError:
+        st.info("Install `shap` (see requirements.txt) to see per-user explanations.")
+    except Exception as e:
+        st.warning(f"Could not compute per-user SHAP explanation: {e}")
 
 st.divider()
 

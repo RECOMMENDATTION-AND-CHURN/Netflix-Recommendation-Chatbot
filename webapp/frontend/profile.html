@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<title>Profile &middot; Netflix</title>
+<link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+  <div class="page-loader" id="page-loader">
+    <div class="logo-emoji">🎬</div>
+    <div>Loading profile&hellip;</div>
+  </div>
+
+  <div class="app-shell" id="app-shell" style="display:none;">
+    <div id="sidebar-root"></div>
+
+    <main class="main-content">
+      <div class="page-hero">
+        <h1>👤 Your Profile</h1>
+        <p>Your favorites, ratings, and taste at a glance.</p>
+      </div>
+
+      <div class="stat-grid" id="stat-grid"></div>
+
+      <div class="section glass">
+        <h2>🎯 Current Preferences</h2>
+        <div id="preferences-list"></div>
+      </div>
+
+      <div class="section glass">
+        <h2>⭐ Favorites</h2>
+        <div id="favorites-list"></div>
+      </div>
+
+      <div class="section glass">
+        <h2>🌟 Your Ratings</h2>
+        <div id="ratings-list"></div>
+      </div>
+    </main>
+  </div>
+
+  <script src="/js/toast.js"></script>
+  <script src="/js/api.js"></script>
+  <script src="/js/shell.js"></script>
+  <script src="/js/profile.js"></script>
+</body>
+</html>
