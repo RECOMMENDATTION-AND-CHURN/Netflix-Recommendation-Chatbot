@@ -173,5 +173,39 @@ def create_database() -> None:
 
     logger.info("Database schema verified/created.")
 
+    # ---- Performance indexes (Module 6) ----
+    # Every hot-path query in this project (chat history lookup, favorites/
+    # ratings lookup, dashboard analytics, recommendation history scoring)
+    # filters by user_id. Without an index, each of those does a full
+    # table scan — fine at demo scale, increasingly slow as chat_history
+    # and movie_clicks grow. IF NOT EXISTS makes this a safe no-op on
+    # databases that already have these indexes.
+    with get_connection() as conn:
+        cursor = conn.cursor()
+        for index_name, table, column in [
+            ("idx_chat_history_user_id", "chat_history", "user_id"),
+            ("idx_user_preferences_user_id", "user_preferences", "user_id"),
+            ("idx_favorites_user_id", "favorites", "user_id"),
+            ("idx_ratings_user_id", "ratings", "user_id"),
+            ("idx_feedback_user_id", "feedback", "user_id"),
+            ("idx_user_activity_user_id", "user_activity", "user_id"),
+            ("idx_search_history_user_id", "search_history", "user_id"),
+            ("idx_movie_clicks_user_id", "movie_clicks", "user_id"),
+            ("idx_movie_clicks_title", "movie_clicks", "movie_title"),
+        ]:
+            cursor.execute(f"CREATE INDEX IF NOT EXISTS {index_name} ON {table}({column})")
+
+    logger.info("Database indexes verified/created.")
+
 
 create_database()
+
+# Automatic database backup (Module 6). Respects DB_BACKUP_MIN_INTERVAL_HOURS
+# internally, so this runs on every process start but only actually writes
+# a new backup file once that interval has elapsed — cheap and safe to
+# leave in the hot import path. Never blocks startup if it fails.
+try:
+    from database.backup import backup_database
+    backup_database()
+except Exception as _backup_err:  # pragma: no cover - defensive only
+    logger.warning("Startup database backup skipped due to an error: %s", _backup_err)

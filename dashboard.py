@@ -17,9 +17,17 @@ import numpy as np
 import plotly.express as px
 from datetime import datetime, timedelta
 
+from logging_config import configure_logging
+
+logger = configure_logging(component="dashboard")
+
 from database.activity_store import get_all_user_activity
 from database.auth_store import get_all_users
 from database.ratings_store import get_all_ratings
+from database.analytics_store import (
+    get_recent_activity_feed, get_signup_trend, get_recommendation_trend,
+    get_recommendation_acceptance_rate, get_movie_popularity,
+)
 from churn.model import predict_churn_probability, risk_label, _load_bundle, build_feature_row
 
 st.set_page_config(page_title="Netflix AI — Provider Dashboard", page_icon="📊", layout="wide")
@@ -45,9 +53,12 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
-activity_rows = get_all_user_activity()
-users = get_all_users()
-ratings = get_all_ratings()
+@st.cache_data(ttl=30, show_spinner=False)
+def _load_dashboard_data():
+    return get_all_user_activity(), get_all_users(), get_all_ratings()
+
+
+activity_rows, users, ratings = _load_dashboard_data()
 
 if not activity_rows:
     st.info("No user activity recorded yet. Have someone sign up and use the chatbot (app.py) first.")
@@ -153,6 +164,86 @@ with st.container(border=True, key="nf_panel_charts_2"):
         st.subheader("Recommendation Requests per User")
         fig4 = px.histogram(df, x="recommendation_requests", nbins=20)
         st.plotly_chart(fig4, use_container_width=True)
+
+st.divider()
+
+# =====================================================
+# Module 5 — Weekly / Monthly trends
+# =====================================================
+st.markdown('<div class="nf-section-title">📈 Trends Over Time</div>', unsafe_allow_html=True)
+
+with st.container(border=True, key="nf_panel_trends"):
+    trend_period = st.radio("Granularity", ["Weekly", "Monthly"], horizontal=True, label_visibility="collapsed")
+    freq, periods, period_label = ("W", 8, "week") if trend_period == "Weekly" else ("M", 6, "month")
+
+    signup_trend = get_signup_trend(freq=freq, periods=periods)
+    rec_trend = get_recommendation_trend(freq=freq, periods=periods)
+
+    trend_col1, trend_col2 = st.columns(2)
+    with trend_col1:
+        st.caption(f"New signups per {period_label}")
+        fig_signups = px.area(signup_trend, x="period", y="count", markers=True)
+        fig_signups.update_traces(line_color="#E50914", fillcolor="rgba(229,9,20,0.18)")
+        st.plotly_chart(fig_signups, use_container_width=True)
+
+    with trend_col2:
+        st.caption(f"Recommendation requests per {period_label}")
+        fig_recs = px.area(rec_trend, x="period", y="count", markers=True)
+        fig_recs.update_traces(line_color="#2ecc71", fillcolor="rgba(46,204,113,0.18)")
+        st.plotly_chart(fig_recs, use_container_width=True)
+
+st.divider()
+
+# =====================================================
+# Module 5 — Recommendation acceptance & movie popularity
+# =====================================================
+st.markdown('<div class="nf-section-title">🎯 Recommendation Acceptance &amp; Movie Popularity</div>', unsafe_allow_html=True)
+
+with st.container(border=True, key="nf_panel_acceptance"):
+    acceptance = get_recommendation_acceptance_rate()
+    acc_col1, acc_col2, acc_col3 = st.columns(3)
+    acc_col1.metric("Movies Recommended", acceptance["total_recommended"])
+    acc_col2.metric("Acted On (fav/rated/trailer)", acceptance["accepted"])
+    acc_col3.metric("Acceptance Rate", f"{acceptance['acceptance_rate_pct']}%")
+    st.caption(
+        "A recommendation counts as \"acted on\" if the user favorited it, rated it, "
+        "or watched its trailer — a simple, honest proxy for \"did they like what we suggested.\""
+    )
+
+    popularity_df = get_movie_popularity(limit=10)
+    if popularity_df.empty:
+        st.info("No movie interactions recorded yet.")
+    else:
+        fig_pop = px.bar(
+            popularity_df.sort_values("total"),
+            x="total", y="movie_title", orientation="h",
+            hover_data=["recommended", "favorited", "trailer", "rated"],
+            labels={"total": "Total interactions", "movie_title": "Movie"},
+            title="Most-engaged-with movies platform-wide",
+        )
+        st.plotly_chart(fig_pop, use_container_width=True)
+
+st.divider()
+
+# =====================================================
+# Module 5 — Live activity feed
+# =====================================================
+st.markdown('<div class="nf-section-title">🔴 Live Activity Feed</div>', unsafe_allow_html=True)
+
+with st.container(border=True, key="nf_panel_activity_feed"):
+    if st.button("🔄 Refresh feed"):
+        st.rerun()
+
+    feed = get_recent_activity_feed(limit=25)
+    if not feed:
+        st.info("No activity recorded yet.")
+    else:
+        for event in feed:
+            st.markdown(
+                f"{event['icon']} **{event['username']}** {event['text']} "
+                f"&nbsp;·&nbsp; <span style='color:var(--nf-text-muted);font-size:0.82rem'>{event['timestamp']}</span>",
+                unsafe_allow_html=True,
+            )
 
 st.divider()
 

@@ -1,8 +1,28 @@
+"""
+chatbot/memory.py
+-------------------
+Merges newly-extracted preferences (from one chat turn) into the user's
+existing stored preferences, handling the "intent changed, so reset
+everything else" case.
+"""
+
+from typing import Dict, Any
+
 from database.chat_store import load_preferences, save_preferences
 
-def merge_preferences(user_id, new_preferences):
+def merge_preferences(user_id: int, new_preferences: Dict[str, Any]) -> Dict[str, Any]:
     """
     Merge newly extracted preferences with existing preferences.
+
+    If the user's intent has changed since last time (e.g. they were
+    describing preferences and now ask for movies "similar to X"), every
+    other slot is wiped first — an old genre/language from a different
+    intent shouldn't silently carry over into a new one. Otherwise, any
+    non-null field in new_preferences overwrites the stored value; null
+    fields leave the existing value untouched (so "Tamil" then "comedy"
+    across two turns still ends up as {language: Tamil, genre: comedy}).
+
+    Persists the merged result via save_preferences() and returns it.
     """
 
     current = load_preferences(user_id)

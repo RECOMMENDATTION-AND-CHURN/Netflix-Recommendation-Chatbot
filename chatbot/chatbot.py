@@ -1,3 +1,14 @@
+"""
+chatbot/chatbot.py
+--------------------
+LLM-facing layer: builds the Gemini prompt from recent conversation
+history, calls Gemini, and parses its JSON reply into a preferences dict.
+Also contains a single-user CLI chatbot() for quick manual testing
+outside the Streamlit/Flask UIs.
+"""
+
+from typing import Optional, Dict, Any
+
 from database.chat_store import save_chat, get_recent_chat
 from chatbot.memory import merge_preferences
 from chatbot.prompts import SYSTEM_PROMPT
@@ -7,13 +18,35 @@ import json
 
 USER_ID = 1
 
+# Returned when Gemini responds but its reply isn't valid JSON (rare, but
+# possible with any LLM) — an "empty" preferences dict so callers can
+# keep merging without special-casing a parse failure.
+_EMPTY_PREFERENCES: Dict[str, Any] = {
+    "intent": None,
+    "movie_name": None,
+    "mood": None,
+    "genre": None,
+    "language": None,
+    "watch_time": None,
+    "audience": None,
+}
 
-def extract_preferences(user_input, user_id=None):
-    """user_id is optional and defaults to the module-level USER_ID (used
+
+def extract_preferences(user_input: str, user_id: Optional[int] = None) -> Optional[Dict[str, Any]]:
+    """Asks Gemini to extract movie preferences from `user_input` plus
+    recent conversation context, and returns the parsed preferences dict.
+
+    Returns None only if Gemini itself is unreachable (see
+    chatbot/gemini_api.py's retry logic) — a malformed-but-present reply
+    still returns a (mostly empty) dict rather than None, so callers can
+    treat "no signal extracted" and "API down" differently upstream.
+
+    user_id is optional and defaults to the module-level USER_ID (used
     by the single-user CLI chatbot() below) so existing single-argument
     callers keep working exactly as before. app.py (the multi-user web
     UI) passes the real logged-in user's id so conversation context is
-    built from THEIR chat history, not always user 1's."""
+    built from THEIR chat history, not always user 1's.
+    """
     effective_user_id = USER_ID if user_id is None else user_id
     conversation = build_conversation(effective_user_id, user_input)
 
@@ -41,18 +74,13 @@ def extract_preferences(user_input, user_id=None):
 
     except Exception:
 
-        return {
-            "intent": None,
-            "movie_name": None,
-            "mood": None,
-            "genre": None,
-            "language": None,
-            "watch_time": None,
-            "audience": None
-        }
+        return dict(_EMPTY_PREFERENCES)
 
 
-def chatbot():
+def chatbot() -> None:
+    """Single-user, terminal-based chat loop for manual/local testing.
+    Not used by app.py or webapp/server.py (both are multi-user and have
+    their own UI loops) — this is purely a developer convenience."""
 
     print("\n🎬 Netflix AI Chatbot")
     print("Type 'exit' to quit.\n")
@@ -91,7 +119,9 @@ def chatbot():
         print("\n-----------------------------------\n")
 
 
-def build_conversation(user_id, user_message):
+def build_conversation(user_id: int, user_message: str) -> str:
+    """Formats recent chat history + the new message into the plain-text
+    transcript the Gemini prompt expects (see extract_preferences)."""
 
     history = get_recent_chat(user_id)
 
