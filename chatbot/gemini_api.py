@@ -1,5 +1,6 @@
 import os
 import time
+from typing import Optional
 from dotenv import load_dotenv
 from google import genai
 
@@ -10,7 +11,11 @@ client = genai.Client(
 )
 
 
-def ask_gemini(prompt):
+def ask_gemini(prompt: str) -> Optional[str]:
+    """Sends `prompt` to Gemini, retrying up to 3 times with a 2s pause
+    between attempts. Returns the raw text response, or None if all 3
+    attempts failed (network error, invalid/missing API key, quota, etc.)
+    — callers (extract_preferences) treat None as "Gemini unavailable"."""
 
     for i in range(3):
 

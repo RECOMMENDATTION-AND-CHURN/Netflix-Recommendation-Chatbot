@@ -16,6 +16,7 @@ Run directly to (re)train:
 
 import os
 import logging
+import functools
 from typing import Dict, Optional
 
 import joblib
@@ -119,6 +120,7 @@ def train() -> LGBMClassifier:
     return model
 
 
+@functools.lru_cache(maxsize=1)
 def _load_bundle() -> dict:
     if not os.path.exists(MODEL_PATH):
         raise FileNotFoundError(

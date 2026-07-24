@@ -15,7 +15,9 @@ import streamlit.components.v1 as components
 import os
 import re
 import time
-import logging
+
+from config import settings
+from logging_config import configure_logging
 
 from recommendation.movie_service import MovieRecommendationService
 from chatbot.chatbot import extract_preferences
@@ -36,12 +38,11 @@ from database.ratings_store import add_or_update_rating, get_user_rating_for_mov
 from database.interaction_store import log_click
 from database.feedback_store import add_feedback
 
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
+logger = configure_logging(component="streamlit")
 
 BASE_DIR = os.path.dirname(__file__)
-ASSISTANT_AVATAR = None
-USER_AVATAR = None
+ASSISTANT_AVATAR = "🎬"
+USER_AVATAR = "🧑"
 
 GREETING_PATTERN = re.compile(
     r"^\s*(hi|hii+|hey+|hello+|yo|sup|good\s?(morning|afternoon|evening))\s*[!.?]*\s*$",
@@ -78,10 +79,22 @@ if os.path.exists(js_path):
     with open(js_path) as f:
         components.html(f"<script>{f.read()}</script>", height=0, width=0)
 
-service = MovieRecommendationService(
-    dataset_path=os.path.join(BASE_DIR, "data", "tmdb_Preprocessed_dataset.csv"),
-    embedding_path=os.path.join(BASE_DIR, "models", "movie_embeddings.pkl"),
-)
+@st.cache_resource(show_spinner=False)
+def _load_recommendation_service() -> MovieRecommendationService:
+    """Loads the dataset + embeddings exactly once per server process and
+    reuses the same instance across every user and every rerun. Before
+    this, MovieRecommendationService(...) ran on every single Streamlit
+    rerun (i.e. every chat message from every user), re-reading the full
+    CSV and embeddings pickle from disk each time — the single biggest
+    avoidable cost in the app."""
+    logger.info("Loading recommendation dataset + embeddings (one-time, cached)...")
+    return MovieRecommendationService(
+        dataset_path=str(settings.data_path),
+        embedding_path=str(settings.embedding_path),
+    )
+
+
+service = _load_recommendation_service()
 
 
 # =====================================================
@@ -451,6 +464,29 @@ elif prompt is None and edited_prompt is not None:
     prompt = edited_prompt
 
 if prompt:
+    # ---- Input validation (Module 6) ----
+    # A stray extremely long paste (or a scripted flood) shouldn't be sent
+    # straight to Gemini / stored as-is. New user-typed input only — a
+    # regenerate/edit-resend of something already validated once skips this.
+    if not is_regenerate and len(prompt) > settings.CHAT_MESSAGE_MAX_LENGTH:
+        st.warning(
+            f"Your message is too long ({len(prompt)} characters). "
+            f"Please keep it under {settings.CHAT_MESSAGE_MAX_LENGTH} characters."
+        )
+        st.stop()
+
+    # ---- Rate limiting (Module 6) ----
+    # A simple per-session cooldown between messages — mainly to protect
+    # the Gemini API quota from a rapid double-submit or scripted flood,
+    # not a strict security control (that's the Flask API's job for the
+    # web frontend). Regenerate/edit share the same cooldown clock.
+    now = time.time()
+    last_sent = st.session_state.get("_last_message_time", 0)
+    if now - last_sent < settings.CHAT_RATE_LIMIT_COOLDOWN_SECONDS:
+        st.info("You're sending messages a little fast — please wait a moment.")
+        st.stop()
+    st.session_state["_last_message_time"] = now
+
     if not is_regenerate:
         with st.chat_message("user", avatar=USER_AVATAR):
             st.markdown(prompt)
