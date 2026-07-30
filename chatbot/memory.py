@@ -1,9 +1,5 @@
 """
-chatbot/memory.py
--------------------
-Merges newly-extracted preferences (from one chat turn) into the user's
-existing stored preferences, handling the "intent changed, so reset
-everything else" case.
+DEVELOPED BY FAHUMITHA AFROSE(8208E23ASR019)
 """
 
 from typing import Dict, Any
