@@ -1,4 +1,6 @@
 """
+DEVELOPED BY HARIHARASUDHAN(8208E23ASR022)
+"""
 database/auth_store.py
 ------------------------
 Signup / login / password hashing. Deliberately dependency-free (uses
