@@ -1,3 +1,7 @@
+
+"""
+DEVELOPED BY GAYATHRI(8208E23ASR021)
+"""
 # recommendation.py
 import pandas as pd
 from sklearn.metrics.pairwise import cosine_similarity
