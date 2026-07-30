@@ -1,4 +1,6 @@
 """
+DEVELOPED BY HARIHARASUDHAN(8208E23ASR022)
+"""
 database/activity_store.py
 ----------------------------
 Everything the CHURN/ANALYTICS side needs. The chatbot UI (app.py) calls
