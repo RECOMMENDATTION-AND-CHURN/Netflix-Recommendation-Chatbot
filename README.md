@@ -10,7 +10,7 @@ The system understands natural language using Google's Gemini AI, remembers user
 
 Additionally, the project predicts whether a customer is likely to churn based on their streaming behavior, enabling businesses to improve customer retention strategies.
 
----
+
 
 # Features
 
@@ -69,7 +69,7 @@ Additionally, the project predicts whether a customer is likely to churn based o
 - Feedback System
 - Activity Tracking
 
----
+
 
 # AI Technologies
 
@@ -82,7 +82,7 @@ Additionally, the project predicts whether a customer is likely to churn based o
 - Natural Language Processing (NLP)
 - Customer Churn Prediction
 
----
+
 
 # System Architecture
 
@@ -120,9 +120,9 @@ Additionally, the project predicts whether a customer is likely to churn based o
                   │
                   ▼
            Analytics Dashboard
-```
 
----
+
+
 
 # Tech Stack
 
@@ -160,7 +160,7 @@ Additionally, the project predicts whether a customer is likely to churn based o
 - Git
 - GitHub
 
----
+
 
 # Project Structure
 
@@ -224,9 +224,9 @@ Netflix-Recommendation-Chatbot
 │
 └── webapp/
     └── frontend/
-```
 
----
+
+
 
 # Project Objectives
 
@@ -240,7 +240,7 @@ Netflix-Recommendation-Chatbot
 - Improve user engagement and retention.
 - Deliver an intelligent movie discovery experience.
 
----
+
 
 # Future Enhancements
 
@@ -255,16 +255,18 @@ Netflix-Recommendation-Chatbot
 - Mobile Application
 - Multi-Agent AI Movie Assistant
 
----
+
 
 # Contributors
 
 **Netflix Recommendation Team**
 
-- Fahumitha Afrose
-- Gayathri
-- Hari
-- (Add remaining team members)
+Elavarasan-8208E23ASR018 (Churn Prediction)
+Fahumitha Afrose-8208E23ASR019 (Chatbot)
+Fathima Fazlina-8208E23ASR020 (Frontend)
+Gayathri-8208E23ASR021 (Recommendation Engine)
+Harihara Sudhan-8208E23ASR022 (Database)
+
 
 Developed an intelligent AI-powered movie recommendation system using Natural Language Processing, Machine Learning, and Google Gemini AI.
 
