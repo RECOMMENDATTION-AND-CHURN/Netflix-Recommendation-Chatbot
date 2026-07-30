@@ -1,3 +1,6 @@
+"""
+DEVELOPED BY HARIHARASUDHAN(8208E23ASR022)
+"""
 """database/favorites_store.py — one row per movie a user saves."""
 
 from datetime import datetime
