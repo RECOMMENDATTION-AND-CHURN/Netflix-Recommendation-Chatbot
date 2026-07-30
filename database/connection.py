@@ -1,4 +1,6 @@
 """
+DEVELOPED BY HARIHARASUDHAN(8208E23ASR022)
+"""
 database/connection.py
 -----------------------
 Single source of truth for the SQLite connection and full schema.
