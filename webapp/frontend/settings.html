@@ -5,10 +5,11 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
 <title>Settings &middot; Netflix</title>
 <link rel="stylesheet" href="/css/style.css">
+<script src="https://unpkg.com/lucide@latest"></script>
 </head>
 <body>
   <div class="page-loader" id="page-loader">
-    <div class="logo-emoji">🎬</div>
+    <i data-lucide="clapperboard" class="logo-icon spin-slow"></i>
     <div>Loading settings&hellip;</div>
   </div>
 
@@ -17,12 +18,12 @@
 
     <main class="main-content">
       <div class="page-hero">
-        <h1>⚙️ Settings</h1>
+        <h1><i data-lucide="settings" class="hero-icon"></i> Settings</h1>
         <p>Manage your account and preferences.</p>
       </div>
 
       <div class="section glass">
-        <h2>🔒 Change Password</h2>
+        <h2><i data-lucide="lock"></i> Change Password</h2>
         <form id="password-form" novalidate>
           <div class="field">
             <label for="current-password">Current password</label>
@@ -42,7 +43,7 @@
       </div>
 
       <div class="section glass">
-        <h2>🎨 Appearance &amp; Notifications</h2>
+        <h2><i data-lucide="palette"></i> Appearance &amp; Notifications</h2>
         <div class="toggle-row">
           <div>
             <div>Compact message bubbles</div>
@@ -64,7 +65,7 @@
       </div>
 
       <div class="section glass">
-        <h2>💬 Feedback</h2>
+        <h2><i data-lucide="message-square"></i> Feedback</h2>
         <div class="field">
           <label for="satisfaction">How satisfied are you with recommendations? (1-5)</label>
           <select id="satisfaction">
