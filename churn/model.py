@@ -30,6 +30,8 @@ from sklearn.metrics import accuracy_score, roc_auc_score, classification_report
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+### file paths---
+
 BASE_DIR = os.path.dirname(os.path.dirname(__file__))
 DATA_PATH = os.path.join(BASE_DIR, "data", "streaming_churn_dataset.csv")
 MODEL_PATH = os.path.join(BASE_DIR, "models", "churn_model.pkl")
@@ -55,6 +57,7 @@ BASE_FEATURE_COLUMNS = [
 ENGINEERED_FEATURE_COLUMNS = [
     "favorite_rate", "click_through_rate", "rating_engagement_rate", "engagement_score",
 ]
+###combine the features---
 
 FEATURE_COLUMNS = BASE_FEATURE_COLUMNS + ENGINEERED_FEATURE_COLUMNS + GENRE_COLUMNS
 
