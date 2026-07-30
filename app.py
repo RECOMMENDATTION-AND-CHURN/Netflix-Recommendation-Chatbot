@@ -1,7 +1,6 @@
 """
 app.py
 -------
-User-facing Netflix AI Chatbot — multi-user version.
 
 Owns: auth gate, UI (Netflix theme, cards, chat bubbles), conversation
 orchestration (greeting/exit/slot-filling/change-explanation), and wiring
