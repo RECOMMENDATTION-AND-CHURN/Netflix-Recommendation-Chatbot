@@ -1,3 +1,6 @@
+"""
+DEVELOPED BY HARIHARASUDHAN(8208E23ASR022)
+"""
 """database/ratings_store.py — one row per movie a user rates."""
 
 from datetime import datetime
