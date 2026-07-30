@@ -12,30 +12,30 @@ async function requireAuth() {
 function renderSidebar(activePage, user) {
   const initial = (user.username || "?").slice(0, 1).toUpperCase();
   const nav = [
-    { href: "/chat.html", icon: "\u{1F4AC}", label: "Chat", key: "chat" },
-    { href: "/profile.html", icon: "\u{1F464}", label: "Profile", key: "profile" },
-    { href: "/settings.html", icon: "\u2699\uFE0F", label: "Settings", key: "settings" },
+    { href: "/chat.html", icon: "message-square", label: "Chat", key: "chat" },
+    { href: "/profile.html", icon: "user", label: "Profile", key: "profile" },
+    { href: "/settings.html", icon: "settings", label: "Settings", key: "settings" },
   ];
 
   const navHtml = nav
     .map(
       (n) => `<a class="nav-link${n.key === activePage ? " active" : ""}" href="${n.href}">
-        <span>${n.icon}</span><span>${n.label}</span>
+        <i data-lucide="${n.icon}"></i><span>${n.label}</span>
       </a>`
     )
     .join("");
 
   document.getElementById("sidebar-root").innerHTML = `
-    <button class="btn btn-ghost btn-icon sidebar-toggle" id="sidebar-toggle-btn" aria-label="Toggle menu">\u2630</button>
+    <button class="btn btn-ghost btn-icon sidebar-toggle" id="sidebar-toggle-btn" aria-label="Toggle menu"><i data-lucide="menu"></i></button>
     <aside class="sidebar glass" id="sidebar">
-      <div class="sidebar-brand"><span class="logo-emoji">\u{1F3AC}</span> Netflix</div>
+      <div class="sidebar-brand"><i data-lucide="clapperboard" class="logo-icon"></i> Netflix</div>
       <nav>${navHtml}</nav>
       <div class="sidebar-footer">
         <div class="user-chip">
           <div class="avatar-circle">${initial}</div>
           <div>${user.username}</div>
         </div>
-        <button class="btn btn-ghost btn-block" id="logout-btn">\u{1F6AA} Log Out</button>
+        <button class="btn btn-ghost btn-block" id="logout-btn"><i data-lucide="log-out"></i> Log Out</button>
       </div>
     </aside>
   `;
@@ -48,6 +48,8 @@ function renderSidebar(activePage, user) {
     await Api.post("/api/auth/logout");
     window.location.href = "/login.html";
   });
+
+  lucide.createIcons();
 }
 
 function escapeHtml(str) {

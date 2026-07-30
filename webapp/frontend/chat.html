@@ -5,10 +5,11 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
 <title>Chat &middot; Netflix</title>
 <link rel="stylesheet" href="/css/style.css">
+<script src="https://unpkg.com/lucide@latest"></script>
 </head>
 <body>
   <div class="page-loader" id="page-loader">
-    <div class="logo-emoji">🎬</div>
+    <i data-lucide="clapperboard" class="logo-icon spin-slow"></i>
     <div>Loading Netflix&hellip;</div>
   </div>
 
@@ -17,22 +18,23 @@
 
     <main class="main-content">
       <div class="page-hero">
-        <h1 id="hero-title">🎬 Netflix AI Chatbot</h1>
+        <h1 id="hero-title"><i data-lucide="sparkles" class="hero-icon"></i> Netflix AI Chatbot</h1>
         <p id="hero-sub">Tell me your mood, language, or genre.</p>
       </div>
 
       <div class="chat-wrap">
         <div class="chat-toolbar">
           <div></div>
-          <button class="btn btn-ghost btn-sm" id="clear-chat-btn">🗑️ Clear chat</button>
+          <button class="btn btn-ghost btn-sm" id="clear-chat-btn"><i data-lucide="trash-2"></i> Clear chat</button>
         </div>
 
         <div class="chat-messages" id="chat-messages"></div>
-        <div id="movie-results"></div>
+
+        <div class="quick-prompts" id="quick-prompts"></div>
 
         <div class="chat-input-bar glass">
-          <textarea id="chat-input" rows="1" placeholder="Type your message..."></textarea>
-          <button class="btn btn-primary btn-icon" id="send-btn" aria-label="Send">➤</button>
+          <textarea id="chat-input" rows="1" placeholder="Ask for movies, genres, actors, or moods..."></textarea>
+          <button class="btn btn-primary btn-icon" id="send-btn" aria-label="Send"><i data-lucide="send"></i></button>
         </div>
       </div>
     </main>
